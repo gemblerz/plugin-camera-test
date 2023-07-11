@@ -37,10 +37,11 @@ class MyCamera:
             self.cam.capture.capture.grab()
             self.timestamp = get_timestamp()
             self.lock.release()
+            time.sleep(0.01)
 
     def snapshot(self):
         self.lock.acquire()
-        data, ok = self.cam.capture.capture.retreive()
+        data, ok = self.cam.capture.capture.retrieve()
         timestamp = self.timestamp
         self.lock.release()
         if not ok:
