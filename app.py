@@ -41,7 +41,7 @@ class MyCamera:
 
     def snapshot(self):
         self.lock.acquire()
-        data, ok = self.cam.capture.capture.retrieve()
+        ok, data = self.cam.capture.capture.retrieve()
         timestamp = self.timestamp
         self.lock.release()
         if not ok:
