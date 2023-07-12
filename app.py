@@ -4,6 +4,7 @@ import time
 import threading
 from datetime import datetime, timezone
 
+import cv2
 from croniter import croniter
 from waggle.plugin import Plugin
 from waggle.data.vision import Camera, get_timestamp, ImageSample, RGB
@@ -32,12 +33,18 @@ class MyCamera:
         self.cam.__exit__(exc_type, exc_val, exc_tb)
 
     def _run(self):
+        # we sleep slighly shorter than FPS to drain the buffer efficiently
+        fps = self.cam.capture.capture.get(cv2.CAP_PROP_FPS)
+        sleep = 0.01
+        if fps > 0:
+            sleep = 1 / (fps + 1)
+        logging.info(f'sleep time for the background frame grab(): {sleep} seconds')
         while not self.need_to_stop:
             self.lock.acquire()
             self.cam.capture.capture.grab()
             self.timestamp = get_timestamp()
             self.lock.release()
-            time.sleep(0.01)
+            time.sleep(sleep)
 
     def snapshot(self):
         self.lock.acquire()
