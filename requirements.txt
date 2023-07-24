@@ -1,3 +1,3 @@
 pip
 croniter
-pywaggle[vision] == 0.56.*
+pywaggle[vision] == 0.57.*

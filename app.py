@@ -10,7 +10,7 @@ from waggle.plugin import Plugin
 from waggle.data.vision import Camera, get_timestamp, ImageSample, RGB
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s %(message)s',
     datefmt='%Y/%m/%d %H:%M:%S')
 
@@ -93,6 +93,50 @@ def drain_buffer(stream):
             plugin.upload_file("sample.jpg")
 
 
+def new_approach(stream):
+    logging.info("capturing a snapshot without the background thread")
+    sample = Camera(stream).snapshot()
+    sample.save(f'snapshot-no-thread-{sample.timestamp}.jpg')
+
+    logging.info("capturing a snapshot with a thread in the background")
+    with Camera(stream) as cap:
+        sample = cap.snapshot()
+        sample.save(f'snapshot-{sample.timestamp}.jpg')
+
+    logging.info("capturing frames from stream() without the background thread")
+    remain = 10
+    for sample in Camera(stream).stream():
+        sample.save(f'stream-no-thread-{sample.timestamp}.jpg')
+        remain -= 1
+        if remain <= 0:
+            break
+        time.sleep(1)
+
+    logging.info("capturing frames from stream() with a thread in the background")
+    remain = 10
+    with Camera(stream) as cap:
+        for sample in cap.stream():
+            sample.save(f'stream-{sample.timestamp}.jpg')
+            remain -= 1
+            if remain <= 0:
+                break
+            time.sleep(1)
+
+    logging.info("record with camera open. we expect a failure")
+    try:
+        with Camera(stream) as cap:
+            cap.record(duration=10)
+    except Exception as ex:
+        logging.error(ex)
+
+    duration = 5
+    logging.info(f'record a video for {duration} seconds')
+    video = Camera(args.stream).record(duration=duration)
+
+    for frame in video:
+        if frame is not None:
+            frame.save(f'video-{frame.timestamp}.jpg')
+
 def run(args):
     logging.info(f'"start getting a stream from {args.stream}')
 
@@ -100,6 +144,8 @@ def run(args):
         return stream_in_buffer(args.stream)
     elif args.mode == "drained":
         return drain_buffer(args.stream)
+    elif args.mode == "new":
+        return new_approach(args.stream)
     else:
         raise Exception(f'unknown mode ({args.mode})')
 
@@ -113,7 +159,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mode', dest='mode',
         action='store', default="buffered", type=str,
-        help='Select run mode: buffered, drained')
+        help='Select run mode: buffered, drained, new')
     parser.add_argument(
         '--cronjob', dest='cronjob',
         action='store', default="* * * * *", type=str,
